@@ -3,9 +3,18 @@ import sys
 import time
 
 from paho.mqtt import client as mqtt
+from pip._vendor.distlib.compat import raw_input
 
 
-class mqtt_wrapper:
+def yes_or_no(question):
+    while "the answer is invalid":
+        reply = str(raw_input(question+' (y/n): ')).lower().strip()
+        if reply[0] == 'y':
+            return True
+        if reply[0] == 'n':
+            return False
+
+class mqtt_client:
     broker = 'localhost'
     port = 1883
     topic = "gps"
@@ -13,6 +22,7 @@ class mqtt_wrapper:
     def __init__(self):
         self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
+        self.client.on_disconnect = self.on_disconnect
 
     @classmethod
     def on_connect(cls, client, userdata, flags, rc):
@@ -22,32 +32,41 @@ class mqtt_wrapper:
             print("Failed to connect, return code %d\n", rc)
             sys.exit(1)
 
+    def on_disconnect(self, client, userdata, rc):
+        print("disconnected")
+        if rc != 0:
+            print("Unexpected disconnection.")
+
+        if yes_or_no("Reconnect? "):
+            client.reconnect()
+
     def connect(self):
-        self.client.connect(mqtt_wrapper.broker, mqtt_wrapper.port)
+        self.client.connect(mqtt_client.broker, mqtt_client.port)
 
     def publish(self, msg):
         msg_count = 0
-        result = self.client.publish(mqtt_wrapper.topic, msg)
+        result = self.client.publish(mqtt_client.topic, msg)
 
         status = result[0]
         if status == 0:
-            print(f"Send `{msg}` to topic `{mqtt_wrapper.topic}`")
+            print(f"Send `{msg}` to topic `{mqtt_client.topic}`")
         else:
-            print(f"Failed to send message to topic {mqtt_wrapper.topic}")
+            print(f"Failed to send message to topic {mqtt_client.topic}")
         msg_count += 1
 
     def disconnect(self):
         self.client.disconnect()
 
 
-def main():
-    client = mqtt_wrapper()
+def run():
+    client = mqtt_client()
     client.connect()
-    for i in range(1, 11):
+    for i in range(1, 5):
         client.publish("Message: " + str(i))
-        time.sleep(1)
+        time.sleep(0.1)
+
     client.disconnect()
 
 
 if __name__ == "__main__":
-    main()
+    run()
