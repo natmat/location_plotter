@@ -18,7 +18,10 @@ def parse_line(line):
 
 def nav_msg_to_msg(data):
     lat, lng, odo, c, osp = data.split(',')
-    nav_msg = {"latitude": lat, "longitude": lng, "odometer": odo, "confidence": c, "odospeed": osp}
+
+    confidence = {'ERROR':0,'LOW':1,'MEDIUM':2,'HIGH':3}
+    conf = confidence.get(c.strip())
+    nav_msg = '{"latitude":' + lat + ',"longitude":' + str(lng) + ',"odometer":' + str(odo) + ',"confidence":' + str(conf) + ',"odospeed":' + str(osp) + '}'
     return str(nav_msg)
 
 def parse_log_file(client, log_file):
@@ -28,7 +31,11 @@ def parse_log_file(client, log_file):
         line = fp.readline()
         while line:
             if "Publishing NavigationMessage" in line:
-                if not cnt % 100:
+                # Update every 100th NavMsg, wait delay [ms] between publish
+                update = 10
+                delay = 0.2
+
+                if not cnt % update:
                     print("{}: {}".format(cnt, line.strip()))
                     data = parse_line(line)
                     if data:
@@ -36,7 +43,7 @@ def parse_log_file(client, log_file):
                         gps.append(g)
                         nav_msg = nav_msg_to_msg(data)
                         client.publish(nav_msg)
-                        time.sleep(0.1)
+                        time.sleep(delay)
                 cnt += 1
             line = fp.readline()
 

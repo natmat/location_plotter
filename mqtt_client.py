@@ -17,7 +17,7 @@ def yes_or_no(question):
 class mqtt_client:
     broker = 'localhost'
     port = 1883
-    topic = "gps"
+    topic = "/gps"
 
     def __init__(self):
         self.client = mqtt.Client()
