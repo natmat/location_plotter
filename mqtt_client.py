@@ -44,15 +44,9 @@ class mqtt_client:
         self.client.connect(mqtt_client.broker, mqtt_client.port)
 
     def publish(self, msg):
-        msg_count = 0
         result = self.client.publish(mqtt_client.topic, msg)
-
-        status = result[0]
-        if status == 0:
-            print(f"Send `{msg}` to topic `{mqtt_client.topic}`")
-        else:
+        if result[0] is False:
             print(f"Failed to send message to topic {mqtt_client.topic}")
-        msg_count += 1
 
     def disconnect(self):
         self.client.disconnect()
