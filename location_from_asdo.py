@@ -9,19 +9,17 @@ client = None
 gps = []
 
 
-def get_gps(line):
+def parse_line(line):
     # Line 5661644: 2021/07/01 20:40:51.635024081 10.181.40.24 AUD Navigation Navigation.cpp@357: Publishing NavigationMessage( 52.6228, 1.41293, 393, HIGH, 62.824 )
     m = re.search('^.*\((.*)\).*$', line)
     if m:
-        found = m.group(1)
-    gps = found.split(',')[:2]
-    return (gps)
+        nav_msg = m.group(1)
+    return nav_msg
 
-
-def print_gps(line):
-    (lat, lng) = get_gps(line)
-    print("(" + lat, lng + ")")
-
+def nav_msg_to_msg(data):
+    lat, lng, odo, c, osp = data.split(',')
+    nav_msg = {"latitude": lat, "longitude": lng, "odometer": odo, "confidence": c, "odospeed": osp}
+    return str(nav_msg)
 
 def parse_log_file(client, log_file):
     global gps
@@ -32,9 +30,13 @@ def parse_log_file(client, log_file):
             if "Publishing NavigationMessage" in line:
                 if not cnt % 100:
                     print("{}: {}".format(cnt, line.strip()))
-                    gps.append(get_gps(line))
-                    client.publish(line)
-                    time.sleep(0.1)
+                    data = parse_line(line)
+                    if data:
+                        g = data.split(',')[:2]
+                        gps.append(g)
+                        nav_msg = nav_msg_to_msg(data)
+                        client.publish(nav_msg)
+                        time.sleep(0.1)
                 cnt += 1
             line = fp.readline()
 
