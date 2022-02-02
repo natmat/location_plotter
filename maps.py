@@ -2,6 +2,7 @@
 
 import io
 import os
+import random
 import sqlite3
 import sys
 
@@ -16,15 +17,8 @@ class Waypoint:
     waypoints = []
 
     def __init__(self, wp):
-        self.name, self.lat, self.lng, self.r = wp
+        self.name, self.lat, self.lng, self.radius = wp
         Waypoint.waypoints.append(self)
-
-    @classmethod
-    def plot_waypoints(cls, provider, window):
-        for wp in Waypoint.waypoints:
-            # print("wp:", wp.lat, wp.lng)
-            provider.coordinate_changed.connect(window.add_marker)#(wp.lat, wp.lng, 10, 'red'))
-
 
 class Asdo:
     def __init__(self, config):
@@ -50,36 +44,44 @@ class Asdo:
 
 
 class CoordinateProvider(QObject):
-    coordinate_changed = pyqtSignal(float, float, int, str)
+    coordinate_changed = pyqtSignal(float, float, float, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._timer = QTimer(interval=500)
-        self._timer.timeout.connect(self.generate_coordinate)
+
+        self._timer_gps = QTimer(interval=1000)
+        self._timer_gps.timeout.connect(self.generate_coordinate)
+
+        self._timer_waypoints = QTimer()
 
     def start(self):
-        self._timer.start()
+        self._timer_waypoints.singleShot(100, self.plot_waypoints)
+        self._timer_gps.start()
 
     def stop(self):
-        self._timer.stop()
+        self._timer_gps.stop()
+
+    def plot_waypoints(self):
+        latitude = 51.0
+        longitude = -2.5
+        for wp in Waypoint.waypoints:
+            self.coordinate_changed.emit(wp.lat, wp.lng, wp.radius, 'blue')
+
 
     def generate_coordinate(self):
-        import random
-
-        center_lat, center_lng = 52, 1
+        center_lat, center_lng = 51, -2.5
         x, y = (random.uniform(-0.1, 0.1) for _ in range(2))
         latitude = center_lat + x
         longitude = center_lng + y
-        self.coordinate_changed.emit(latitude, longitude, 10, 'red')
-
+        self.coordinate_changed.emit(latitude, longitude, 500, 'orange')
 
 class Window(QMainWindow):
     def __init__(self):
         super().__init__()
-        coordinate = (52, 1)
+        coordinate = (51, -2.5)
         self.map = folium.Map(
             prefer_canvas=True,
-            zoom_start=12, location=coordinate, control_scale=True, tiles=None
+            zoom_start=10, location=coordinate, control_scale=True, tiles=None
         )
         folium.TileLayer('openstreetmap').add_to(self.map)
         folium.LayerControl().add_to(self.map)
@@ -95,33 +97,31 @@ class Window(QMainWindow):
 
         self.setCentralWidget(self.map_view)
 
-    def add_marker(self, latitude, longitude, radius=2, color='blue'):
-        print("maker:", latitude, longitude, radius, color)
-        # "color": "#3388ff",
+    def add_marker(self, latitude, longitude, in_radius=2.0, in_color='blue'):
         js = Template(
             """
         L.marker([{{latitude}}, {{longitude}}] )
             .addTo({{map}});
-        L.circleMarker(
+        L.circle(
             [{{latitude}}, {{longitude}}], {
                 "bubblingMouseEvents": true,
-                "color": 'red',
+                "color": '{{color}}',
                 "dashArray": null,
                 "dashOffset": null,
-                "fill": false,
-                "fillColor": "#3388ff",
-                "fillOpacity": 0.2,
+                "fill": true,
+                "fillColor": 'blue',
+                "fillOpacity": 0.1,
                 "fillRule": "evenodd",
                 "lineCap": "round",
                 "lineJoin": "round",
                 "opacity": 1.0,
-                "radius": 2.0,
+                "radius": {{radius}},
                 "stroke": true,
                 "weight": 5
             }
         ).addTo({{map}});
         """
-        ).render(map=self.map.get_name(), latitude=latitude, longitude=longitude)
+        ).render(map=self.map.get_name(), latitude=latitude, longitude=longitude, radius=in_radius, color=in_color)
         self.map_view.page().runJavaScript(js)
 
 
@@ -133,13 +133,11 @@ def main():
     window.showMaximized()
 
     provider = CoordinateProvider()
+    provider.coordinate_changed.connect(window.add_marker)
+    provider.start()
 
     db = Asdo('asdo_config.db')
-    # Waypoint.plot_waypoints(provider, window)
-
-    provider.coordinate_changed.connect(window.add_marker)
-
-    provider.start()
+    # provider.plot_waypoints()
 
     sys.exit(app.exec())
 

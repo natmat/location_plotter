@@ -41,7 +41,7 @@ def on_message(client, userdata, msg):
         lat = gps['latitude']
         lng = gps['longitude']
     except Exception as e:
-        print(e)
+        print("Error: " + repr(e))
 
     mutex.acquire()
     try:
