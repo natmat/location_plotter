@@ -61,14 +61,13 @@ class CoordinateProvider(QObject):
         self._timer_gps.stop()
 
     def plot_waypoint(self, wp):
+        print("PlotWP:", wp.lat, wp.lng)
         self.coordinate_changed.emit(wp.lat, wp.lng, wp.radius, 'blue', True)
 
     def plot_gps(self, lat, lng):
         self.coordinate_changed.emit(lat, lng, 5, 'red', 0)
 
     def plot_waypoints(self):
-        latitude = 51.0
-        longitude = -2.5
         for wp in Waypoint.waypoints:
             self.plot_waypoint(wp)
 
