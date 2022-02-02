@@ -42,7 +42,7 @@ class Asdo:
 
 
 class CoordinateProvider(QObject):
-    coordinate_changed = pyqtSignal(float, float, float, str, bool)
+    coordinate_changed = pyqtSignal(str, float, float, float, str, bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -62,10 +62,10 @@ class CoordinateProvider(QObject):
 
     def plot_waypoint(self, wp):
         print("PlotWP:", wp.lat, wp.lng)
-        self.coordinate_changed.emit(wp.lat, wp.lng, wp.radius, 'blue', True)
+        self.coordinate_changed.emit(wp.name, wp.lat, wp.lng, wp.radius, 'blue', True)
 
     def plot_gps(self, lat, lng):
-        self.coordinate_changed.emit(lat, lng, 5, 'red', 0)
+        self.coordinate_changed.emit(None, lat, lng, 5, 'red', 0)
 
     def plot_waypoints(self):
         for wp in Waypoint.waypoints:
@@ -101,12 +101,12 @@ class Window(QMainWindow):
 
         self.setCentralWidget(self.map_view)
 
-    def add_marker(self, latitude, longitude, in_radius=2.0, in_color='blue', marker=False):
+    def add_marker(self, name, latitude, longitude, in_radius=2.0, in_color='blue', marker=False):
         marker = 'true' if marker else 'false'
         js = Template(
             """
         if ({{marker}}) 
-            L.marker([{{latitude}}, {{longitude}}]).addTo({{map}});
+            L.marker([{{latitude}}, {{longitude}}]).addTo({{map}}).bindPopup('{{name}}').openPopup();
         L.circle(
             [{{latitude}}, {{longitude}}], {
                 "bubblingMouseEvents": true,
@@ -126,7 +126,7 @@ class Window(QMainWindow):
             }
         ).addTo({{map}});
         """
-        ).render(map=self.map.get_name(), latitude=latitude, longitude=longitude, radius=in_radius, color=in_color, marker=marker)
+        ).render(map=self.map.get_name(), name=name, latitude=latitude, longitude=longitude, radius=in_radius, color=in_color, marker=marker)
         self.map_view.page().runJavaScript(js)
 
 
