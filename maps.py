@@ -17,7 +17,13 @@ class Waypoint:
 
     def __init__(self, wp):
         self.name, self.lat, self.lng, self.r = wp
-        Waypoint.waypoints.append(wp)
+        Waypoint.waypoints.append(self)
+
+    @classmethod
+    def plot_waypoints(cls, provider, window):
+        for wp in Waypoint.waypoints:
+            # print("wp:", wp.lat, wp.lng)
+            provider.coordinate_changed.connect(window.add_marker)#(wp.lat, wp.lng, 10, 'red'))
 
 
 class Asdo:
@@ -44,11 +50,11 @@ class Asdo:
 
 
 class CoordinateProvider(QObject):
-    coordinate_changed = pyqtSignal(float, float)
+    coordinate_changed = pyqtSignal(float, float, int, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._timer = QTimer(interval=100)
+        self._timer = QTimer(interval=500)
         self._timer.timeout.connect(self.generate_coordinate)
 
     def start(self):
@@ -64,7 +70,7 @@ class CoordinateProvider(QObject):
         x, y = (random.uniform(-0.1, 0.1) for _ in range(2))
         latitude = center_lat + x
         longitude = center_lng + y
-        self.coordinate_changed.emit(latitude, longitude)
+        self.coordinate_changed.emit(latitude, longitude, 10, 'red')
 
 
 class Window(QMainWindow):
@@ -76,9 +82,10 @@ class Window(QMainWindow):
             zoom_start=12, location=coordinate, control_scale=True, tiles=None
         )
         folium.TileLayer('openstreetmap').add_to(self.map)
-
         folium.LayerControl().add_to(self.map)
-        folium.Marker(coordinate).add_to(self.map)
+
+        # Draw point for test
+        # folium.Marker(coordinate).add_to(self.map)
 
         data = io.BytesIO()
         self.map.save(data, close_file=False)
@@ -88,7 +95,9 @@ class Window(QMainWindow):
 
         self.setCentralWidget(self.map_view)
 
-    def add_marker(self, latitude, longitude):
+    def add_marker(self, latitude, longitude, radius=2, color='blue'):
+        print("maker:", latitude, longitude, radius, color)
+        # "color": "#3388ff",
         js = Template(
             """
         L.marker([{{latitude}}, {{longitude}}] )
@@ -96,7 +105,7 @@ class Window(QMainWindow):
         L.circleMarker(
             [{{latitude}}, {{longitude}}], {
                 "bubblingMouseEvents": true,
-                "color": "#3388ff",
+                "color": 'red',
                 "dashArray": null,
                 "dashOffset": null,
                 "fill": false,
@@ -106,7 +115,7 @@ class Window(QMainWindow):
                 "lineCap": "round",
                 "lineJoin": "round",
                 "opacity": 1.0,
-                "radius": 2,
+                "radius": 2.0,
                 "stroke": true,
                 "weight": 5
             }
@@ -116,18 +125,21 @@ class Window(QMainWindow):
         self.map_view.page().runJavaScript(js)
 
 
+
 def main():
     app = QApplication(sys.argv)
-
-    # db = Asdo('asdo_config.db')
 
     window = Window()
     window.showMaximized()
 
     provider = CoordinateProvider()
-    # provider.coordinate_changed.connect(window.add_marker)
 
-    # provider.start()
+    db = Asdo('asdo_config.db')
+    # Waypoint.plot_waypoints(provider, window)
+
+    provider.coordinate_changed.connect(window.add_marker)
+
+    provider.start()
 
     sys.exit(app.exec())
 
