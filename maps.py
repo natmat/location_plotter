@@ -5,20 +5,18 @@ import os
 import random
 import sqlite3
 import sys
-
 import folium
+
 from PyQt5.QtCore import pyqtSignal, QObject, QTimer
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from jinja2 import Template
 
+from waypoint import Waypoint
 
-class Waypoint:
-    waypoints = []
 
-    def __init__(self, wp):
-        self.name, self.lat, self.lng, self.radius = wp
-        Waypoint.waypoints.append(self)
+from mqtt import My_Mqtt
+
 
 class Asdo:
     def __init__(self, config):
@@ -44,36 +42,43 @@ class Asdo:
 
 
 class CoordinateProvider(QObject):
-    coordinate_changed = pyqtSignal(float, float, float, str)
+    coordinate_changed = pyqtSignal(float, float, float, str, bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self._timer_gps = QTimer(interval=1000)
-        self._timer_gps.timeout.connect(self.generate_coordinate)
+        # self._timer_gps.timeout.connect(self.generate_coordinate)
 
         self._timer_waypoints = QTimer()
 
     def start(self):
+        # Plot waypoints first
         self._timer_waypoints.singleShot(100, self.plot_waypoints)
         self._timer_gps.start()
 
     def stop(self):
         self._timer_gps.stop()
 
+    def plot_waypoint(self, wp):
+        self.coordinate_changed.emit(wp.lat, wp.lng, wp.radius, 'blue', True)
+
+    def plot_gps(self, lat, lng):
+        self.coordinate_changed.emit(lat, lng, 5, 'red', 0)
+
     def plot_waypoints(self):
         latitude = 51.0
         longitude = -2.5
         for wp in Waypoint.waypoints:
-            self.coordinate_changed.emit(wp.lat, wp.lng, wp.radius, 'blue')
+            self.plot_waypoint(wp)
 
+    # def generate_coordinate(self):
+    #     center_lat, center_lng = 51, -2.5
+    #     x, y = (random.uniform(-0.5, 0.5) for _ in range(2))
+    #     lat = center_lat + x
+    #     lng = center_lng + y
+    #     self.coordinate_changed.emit(lat, lng, 2000, 'orange')
 
-    def generate_coordinate(self):
-        center_lat, center_lng = 51, -2.5
-        x, y = (random.uniform(-0.1, 0.1) for _ in range(2))
-        latitude = center_lat + x
-        longitude = center_lng + y
-        self.coordinate_changed.emit(latitude, longitude, 500, 'orange')
 
 class Window(QMainWindow):
     def __init__(self):
@@ -97,11 +102,12 @@ class Window(QMainWindow):
 
         self.setCentralWidget(self.map_view)
 
-    def add_marker(self, latitude, longitude, in_radius=2.0, in_color='blue'):
+    def add_marker(self, latitude, longitude, in_radius=2.0, in_color='blue', marker=False):
+        marker = 'true' if marker else 'false'
         js = Template(
             """
-        L.marker([{{latitude}}, {{longitude}}] )
-            .addTo({{map}});
+        if ({{marker}}) 
+            L.marker([{{latitude}}, {{longitude}}]).addTo({{map}});
         L.circle(
             [{{latitude}}, {{longitude}}], {
                 "bubblingMouseEvents": true,
@@ -121,9 +127,8 @@ class Window(QMainWindow):
             }
         ).addTo({{map}});
         """
-        ).render(map=self.map.get_name(), latitude=latitude, longitude=longitude, radius=in_radius, color=in_color)
+        ).render(map=self.map.get_name(), latitude=latitude, longitude=longitude, radius=in_radius, color=in_color, marker=marker)
         self.map_view.page().runJavaScript(js)
-
 
 
 def main():
@@ -137,7 +142,9 @@ def main():
     provider.start()
 
     db = Asdo('asdo_config.db')
-    # provider.plot_waypoints()
+
+    mqtt = My_Mqtt()
+    mqtt.run(provider.plot_gps)
 
     sys.exit(app.exec())
 

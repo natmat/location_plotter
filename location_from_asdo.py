@@ -32,7 +32,7 @@ def parse_log_file(client, log_file):
         while line:
             if "Publishing NavigationMessage" in line:
                 # Update every 100th NavMsg, wait delay [ms] between publish
-                update = 10
+                update = 50
                 delay = 0.2
 
                 if not cnt % update:
