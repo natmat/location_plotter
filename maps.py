@@ -42,7 +42,7 @@ class Asdo:
 
 
 class CoordinateProvider(QObject):
-    coordinate_changed = pyqtSignal(str, float, float, float, str, bool)
+    coordinate_changed = pyqtSignal(float, float, float, str, str, bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -54,18 +54,18 @@ class CoordinateProvider(QObject):
 
     def start(self):
         # Plot waypoints first
-        self._timer_waypoints.singleShot(100, self.plot_waypoints)
+        self._timer_waypoints.singleShot(1000, self.plot_waypoints)
         self._timer_gps.start()
 
     def stop(self):
         self._timer_gps.stop()
 
-    def plot_waypoint(self, wp):
-        print("PlotWP:", wp.lat, wp.lng)
-        self.coordinate_changed.emit(wp.name, wp.lat, wp.lng, wp.radius, 'blue', True)
-
     def plot_gps(self, lat, lng):
-        self.coordinate_changed.emit(None, lat, lng, 5, 'red', 0)
+        self.coordinate_changed.emit(lat, lng, 5, 'red', None, False)
+
+    def plot_waypoint(self, wp):
+        # print("PlotWP:", wp.lat, wp.lng)
+        self.coordinate_changed.emit(wp.lat, wp.lng, wp.radius, 'blue', wp.name, True)
 
     def plot_waypoints(self):
         for wp in Waypoint.waypoints:
@@ -76,22 +76,23 @@ class CoordinateProvider(QObject):
     #     x, y = (random.uniform(-0.5, 0.5) for _ in range(2))
     #     lat = center_lat + x
     #     lng = center_lng + y
-    #     self.coordinate_changed.emit(lat, lng, 2000, 'orange')
+    #     self.coordinate_changed.emit(lat, lng, 2000, 'orange', None, False)
 
 
 class Window(QMainWindow):
     def __init__(self):
         super().__init__()
-        coordinate = (51, -2.5)
+        waypoint_cog = Waypoint.get_middle()
+        print(waypoint_cog)
         self.map = folium.Map(
             prefer_canvas=True,
-            zoom_start=10, location=coordinate, control_scale=True, tiles=None
+            zoom_start=10, location=waypoint_cog, control_scale=True, tiles=None
         )
         folium.TileLayer('openstreetmap').add_to(self.map)
         folium.LayerControl().add_to(self.map)
 
         # Draw point for test
-        # folium.Marker(coordinate).add_to(self.map)
+        # folium.Marker(waypoint_cog).add_to(self.map)
 
         data = io.BytesIO()
         self.map.save(data, close_file=False)
@@ -101,7 +102,8 @@ class Window(QMainWindow):
 
         self.setCentralWidget(self.map_view)
 
-    def add_marker(self, name, latitude, longitude, in_radius=2.0, in_color='blue', marker=False):
+    def add_marker(self, latitude, longitude, in_radius, in_color, name, marker):
+        # Note: can't have default values for this emit-handler
         marker = 'true' if marker else 'false'
         js = Template(
             """
@@ -126,11 +128,13 @@ class Window(QMainWindow):
             }
         ).addTo({{map}});
         """
-        ).render(map=self.map.get_name(), name=name, latitude=latitude, longitude=longitude, radius=in_radius, color=in_color, marker=marker)
+        ).render(map=self.map.get_name(), latitude=latitude, longitude=longitude, radius=in_radius, color=in_color, name=name, marker=marker)
         self.map_view.page().runJavaScript(js)
 
 
 def main():
+    db = Asdo('asdo_config.db')
+
     app = QApplication(sys.argv)
 
     window = Window()
@@ -139,8 +143,6 @@ def main():
     provider = CoordinateProvider()
     provider.coordinate_changed.connect(window.add_marker)
     provider.start()
-
-    db = Asdo('asdo_config.db')
 
     mqtt = My_Mqtt()
     mqtt.run(provider.plot_gps)
