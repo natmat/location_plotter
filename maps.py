@@ -76,13 +76,12 @@ class CoordinateProvider(QObject):
         self.coordinate_changed.emit(lat, lng, radius, conf_color[conf], None, False)
 
     def plot_waypoint(self, wp):
-        # print("PlotWP:", wp.lat, wp.lng)
+        print("PlotWP:", wp.lat, wp.lng)
         self.coordinate_changed.emit(wp.lat, wp.lng, wp.radius, 'blue', wp.name, True)
 
     def plot_waypoints(self):
         for wp in Waypoint.waypoints:
             self.plot_waypoint(wp)
-            return
 
     # def generate_coordinate(self):
     #     center_lat, center_lng = 51, -2.5
