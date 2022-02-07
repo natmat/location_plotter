@@ -12,16 +12,16 @@ gps = []
 def parse_line(line):
     # Line 5661644: 2021/07/01 20:40:51.635024081 10.181.40.24 AUD Navigation Navigation.cpp@357: Publishing NavigationMessage( 52.6228, 1.41293, 393, HIGH, 62.824 )
     m = re.search('^.*\((.*)\).*$', line)
+    nav_msg =  None
     if m:
         nav_msg = m.group(1)
     return nav_msg
 
 def nav_msg_to_msg(data):
-    lat, lng, odo, c, osp = data.split(',')
-
-    confidence = {'ERROR':0,'LOW':1,'MEDIUM':2,'HIGH':3}
-    conf = confidence.get(c.strip())
-    nav_msg = '{"latitude":' + lat + ',"longitude":' + str(lng) + ',"odometer":' + str(odo) + ',"confidence":' + str(conf) + ',"odospeed":' + str(osp) + '}'
+    lat, lng, odo, conf, speed = data.split(',')
+    conf_enum = {'ERROR':0, 'LOW':1, 'MEDIUM':2, 'HIGH':3}
+    conf = conf_enum.get(conf.strip())
+    nav_msg = '{"latitude":' + lat + ',"longitude":' + str(lng) + ',"odometer":' + str(odo) + ',"confidence":' + str(conf) + ',"odospeed":' + str(speed) + '}'
     return str(nav_msg)
 
 def parse_log_file(client, log_file):
@@ -32,8 +32,13 @@ def parse_log_file(client, log_file):
         while line:
             if "Publishing NavigationMessage" in line:
                 # Update every 100th NavMsg, wait delay [ms] between publish
+                if "HIGH" in line:
+                    cnt += 1
+                    line = fp.readline()
+                    continue
+
                 update = 1
-                delay = 0
+                delay = 0.1
 
                 if not cnt % update:
                     print("{}: {}".format(cnt, line.strip()))

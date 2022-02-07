@@ -19,9 +19,12 @@ def on_message(client, userdata, msg):
 
     # print(gps)
     try:
-        lat = gps['latitude']
-        lng = gps['longitude']
-        My_Mqtt.on_message_cbf(lat, lng)
+        latitude = gps.get('latitude')
+        longitude = gps.get('longitude')
+        odometer = gps.get('ododmeter')
+        confidence = gps.get('confidence')
+        speed = gps.get('odospeed')
+        My_Mqtt.on_message_cbf(latitude, longitude, confidence)
     except Exception as e:
         print("Error: " + repr(e))
 

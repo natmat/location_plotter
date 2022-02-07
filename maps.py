@@ -43,6 +43,7 @@ class Asdo:
 
 class CoordinateProvider(QObject):
     coordinate_changed = pyqtSignal(float, float, float, str, str, bool)
+    latitude = 51.5
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -60,8 +61,19 @@ class CoordinateProvider(QObject):
     def stop(self):
         self._timer_gps.stop()
 
-    def plot_gps(self, lat, lng):
-        self.coordinate_changed.emit(lat, lng, 5, 'red', None, False)
+    def plot_gps(self, lat, lng, conf):
+        conf_color = {3:'green', 2:'yellow', 1:'red', 0:'orange'}
+        radius = pow(4-conf, 4)*5
+
+        # Conf 0 or 1 might have 0,0 lat,lng; use previous valid
+        if (conf >= 2):
+            Asdo.latitude = lat
+            Asdo.longitude = lng
+        else:
+            lat = Asdo.latitude
+            lng = Asdo.longitude
+
+        self.coordinate_changed.emit(lat, lng, radius, conf_color[conf], None, False)
 
     def plot_waypoint(self, wp):
         # print("PlotWP:", wp.lat, wp.lng)
@@ -70,6 +82,7 @@ class CoordinateProvider(QObject):
     def plot_waypoints(self):
         for wp in Waypoint.waypoints:
             self.plot_waypoint(wp)
+            return
 
     # def generate_coordinate(self):
     #     center_lat, center_lng = 51, -2.5
@@ -104,6 +117,7 @@ class Window(QMainWindow):
 
     def add_marker(self, latitude, longitude, in_radius, in_color, name, marker):
         # Note: can't have default values for this emit-handler
+        # print(latitude, longitude, in_radius, in_color, name, marker)
         marker = 'true' if marker else 'false'
         js = Template(
             """
@@ -116,7 +130,6 @@ class Window(QMainWindow):
                 "dashArray": null,
                 "dashOffset": null,
                 "fill": true,
-                "fillColor": 'blue',
                 "fillOpacity": 0.1,
                 "fillRule": "evenodd",
                 "lineCap": "round",
