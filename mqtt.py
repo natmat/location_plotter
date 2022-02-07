@@ -29,13 +29,19 @@ def on_message(client, userdata, msg):
 class My_Mqtt:
     on_message_cbf = None
 
-    def __init__(self):
+    def __init__(self, broker='localhost'):
         self.client = mqtt.Client()
         self.client.on_connect = on_connect
         self.client.on_message = on_message
 
-        # client.connect("10.183.200.11", 1883)
-        self.client.connect("localhost", 1883)
+        # block until connected
+        connected = False
+        while not connected:
+            try:
+                self.client.connect(broker, 1883)
+                connected = True
+            except Exception as e:
+                print("Error: " + repr(e))
 
     def run(self, cbf):
         My_Mqtt.on_message_cbf = cbf

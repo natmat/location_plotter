@@ -144,7 +144,10 @@ def main():
     provider.coordinate_changed.connect(window.add_marker)
     provider.start()
 
-    mqtt = My_Mqtt()
+    gwr_icm21 = '10.60.102.11'
+    broker = gwr_icm21
+    broker = 'localhost'
+    mqtt = My_Mqtt(broker)
     mqtt.run(provider.plot_gps)
 
     sys.exit(app.exec())
