@@ -41,7 +41,7 @@ class mqtt_client:
             client.reconnect()
 
     def connect(self, broker='localhost'):
-        mqtt_client,broker = broker
+        mqtt_client.broker = broker
         self.client.connect(mqtt_client.broker, mqtt_client.port)
 
     def publish(self, msg):

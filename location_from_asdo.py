@@ -27,20 +27,16 @@ def nav_msg_to_msg(data):
 def parse_log_file(client, log_file):
     global gps
     with open(log_file) as fp:
-        cnt = 1
+        cnt = 0
         line = fp.readline()
         while line:
+            cnt += 1
             if "Publishing NavigationMessage" in line:
-                # Update every 100th NavMsg, wait delay [ms] between publish
-                if "HIGH" in line:
-                    cnt += 1
-                    line = fp.readline()
-                    continue
-
-                update = 1
+                update = 50
                 delay = 0.1
 
-                if not cnt % update:
+                # Always print error, every 1:update lines
+                if ("HIGH" not in line) or (not cnt % update):
                     print("{}: {}".format(cnt, line.strip()))
                     data = parse_line(line)
                     if data:
@@ -55,7 +51,7 @@ def parse_log_file(client, log_file):
 
 def main(argv):
     client = mqtt_client()
-    client.connect()
+    client.connect('localhost')
     parse_log_file(client, 'asdo.log')
 
 

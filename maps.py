@@ -63,7 +63,7 @@ class CoordinateProvider(QObject):
 
     def plot_gps(self, lat, lng, conf):
         conf_color = {3:'green', 2:'yellow', 1:'red', 0:'orange'}
-        radius = pow(4-conf, 4)*5
+        radius = pow(4-conf, 2)*5
 
         # Conf 0 or 1 might have 0,0 lat,lng; use previous valid
         if (conf >= 2):
