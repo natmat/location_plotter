@@ -22,7 +22,7 @@ class Asdo:
     def __init__(self, config):
         try:
             self.db = sqlite3.connect(config)
-            self.load_wapoints()
+            # self.load_wapoints()
         except Exception as e:
             print("Error: sqlite3 connect failed: " + repr(e))
             print("You need a valid asdo_config.db in pwd: " + os.getcwd())

@@ -7,7 +7,15 @@ class Waypoint:
         Waypoint.waypoints.append(self)
 
     @classmethod
+    def get_newcastle(cls):
+        return [(54.97, -1.6), (54.97, -1.6)]
+
+    @classmethod
     def get_bounds(cls):
+        if len(cls.waypoints) == 0:
+            print("ERROR: No waypoints")
+            return (cls.get_newcastle())
+
         lat_min = min(cls.waypoints, key=lambda t: t.lat).lat
         lat_max = max(cls.waypoints, key=lambda t: t.lat).lat
         lng_min = min(cls.waypoints, key=lambda t: t.lng).lng
@@ -16,8 +24,8 @@ class Waypoint:
 
     @classmethod
     def get_middle(cls):
-        (a,b),(c,d) = cls.get_bounds()
-        return ((a+b)/2, (c+d)/2)
+        (lat1,lng1),(lat2,lng2) = cls.get_bounds()
+        return ((lat1+lat2)/2, (lng1+lng2)/2)
 
     @classmethod
     def print_waypoints(cls):

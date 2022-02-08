@@ -16,8 +16,6 @@ def yes_or_no(question):
             return False
 
 
-
-
 class My_Client:
     broker = 'localhost'
 
@@ -28,9 +26,8 @@ class My_Client:
         self.client.on_disconnect = self.disconnect_cbf
 
     def connect_cbf(self, client, userdata, flags, rc):
-        print("on_connect")
         if rc == 0:
-            print("Connected to MQTT Broker!")
+            print("Connected to Broker: " + mqtt_client.connack_string(rc))
         else:
             print("Failed to connect, return code %d\n", rc)
             sys.exit(1)

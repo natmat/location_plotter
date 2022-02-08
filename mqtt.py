@@ -25,12 +25,18 @@ class My_Mqtt:
                 time.sleep(1)
 
     def connect_cbf(self, client, userdata, flags, rc):
-        print("Connection attempt returned: " + mqtt_client.connack_string(rc))
+        if rc == 0:
+            print("Connected to Broker: " + mqtt_client.connack_string(rc))
+        else:
+            print("Failed to connect, return code %d\n", rc)
+            sys.exit(1)
+
         self.client.subscribe('/consist/out/navigation')
         # self.client.subscribe('/timestamp')
 
     # The callback for when a PUBLISH message is received from the server.
     def message_cbf(self, client, userdata, msg):
+        print("message_cbf")
         s = (msg.payload).decode("utf-8")
 
         if msg.topic == '/timestamp':
@@ -67,12 +73,11 @@ class My_Mqtt:
             print("Error: " + repr(e))
 
     def run(self, cbf):
-        My_Mqtt.on_message_cbf = cbf
+        self.connect_cbf = cbf
         self.client.loop_forever()
 
 def test_cbf(client, userdata, msg):
     print("test_cbf(): " + msg)
-
 
 
 def main(argv):
