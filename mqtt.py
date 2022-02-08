@@ -1,59 +1,83 @@
 import threading
+import time
 
-import paho.mqtt.client as mqtt
+import paho.mqtt.client as mqtt_client
 import json
 import sys
 
-def on_connect(client, userdata, flags, rc):
-    print("Connected with result code " + str(rc))
-    client.subscribe("/consist/out/navigation")
-
-
-# The callback for when a PUBLISH message is received from the server.
-def on_message(client, userdata, msg):
-    s = (msg.payload).decode("utf-8")
-    try:
-        gps = json.loads(s)
-    except Exception as e:
-        print("Error: " + repr(e))
-
-    # print(gps)
-    try:
-        latitude = gps.get('latitude')
-        longitude = gps.get('longitude')
-        odometer = gps.get('ododmeter')
-        confidence = gps.get('confidence')
-        speed = gps.get('odospeed')
-        My_Mqtt.on_message_cbf(latitude, longitude, confidence)
-    except Exception as e:
-        print("Error: " + repr(e))
-
 
 class My_Mqtt:
-    on_message_cbf = None
+    timestamp = 0
 
     def __init__(self, broker='localhost'):
-        self.client = mqtt.Client()
-        self.client.on_connect = on_connect
-        self.client.on_message = on_message
+        self.client = mqtt_client.Client()
+        self.client.on_connect = self.connect_cbf
+        self.client.on_message = self.message_cbf
 
         # block until connected
         connected = False
         while not connected:
             try:
-                self.client.connect(broker, 1883)
+                self.client.connect(broker)
                 connected = True
             except Exception as e:
                 print("Error: " + repr(e))
+                time.sleep(1)
+
+    def connect_cbf(self, client, userdata, flags, rc):
+        print("Connection attempt returned: " + mqtt_client.connack_string(rc))
+        self.client.subscribe('/consist/out/navigation')
+        # self.client.subscribe('/timestamp')
+
+    # The callback for when a PUBLISH message is received from the server.
+    def message_cbf(self, client, userdata, msg):
+        s = (msg.payload).decode("utf-8")
+
+        if msg.topic == '/timestamp':
+            try:
+                ts = json.loads(s)
+            except Exception as e:
+                print("Error: " + repr(e))
+
+            try:
+                seconds = ts.get('seconds')
+                print(seconds)
+                delta  = seconds - My_Mqtt.timestamp
+                print(delta)
+                My_Mqtt.timestamp = seconds
+            except Exception as e:
+                print("Error: " + repr(e))
+
+            return
+
+        try:
+            gps = json.loads(s)
+        except Exception as e:
+            print("Error: " + repr(e))
+
+        # print(gps)
+        try:
+            latitude = gps.get('latitude')
+            longitude = gps.get('longitude')
+            odometer = gps.get('ododmeter')
+            confidence = gps.get('confidence')
+            speed = gps.get('odospeed')
+            My_Mqtt.on_message_cbf(latitude, longitude, confidence)
+        except Exception as e:
+            print("Error: " + repr(e))
 
     def run(self, cbf):
         My_Mqtt.on_message_cbf = cbf
-        self.client.loop_start()
+        self.client.loop_forever()
+
+def test_cbf(client, userdata, msg):
+    print("test_cbf(): " + msg)
+
 
 
 def main(argv):
-    mqtt = My_Mqtt()
-    # mqtt.run()
+    mqtt = My_Mqtt('localhost')
+    mqtt.run(test_cbf)
 
 
 if __name__ == "__main__":
