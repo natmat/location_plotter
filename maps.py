@@ -22,7 +22,7 @@ class Asdo:
     def __init__(self, config):
         try:
             self.db = sqlite3.connect(config)
-            # self.load_wapoints()
+            self.load_wapoints()
         except Exception as e:
             print("Error: sqlite3 connect failed: " + repr(e))
             print("You need a valid asdo_config.db in pwd: " + os.getcwd())
@@ -48,7 +48,7 @@ class CoordinateProvider(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self._timer_gps = QTimer(interval=1000)
+        self._timer_gps = QTimer(interval=2000)
         # self._timer_gps.timeout.connect(self.generate_coordinate)
 
         self._timer_waypoints = QTimer()
@@ -63,7 +63,7 @@ class CoordinateProvider(QObject):
 
     def plot_gps(self, lat, lng, conf):
         conf_color = {3:'green', 2:'yellow', 1:'red', 0:'orange'}
-        radius = pow(4-conf, 2)*5
+        radius = 100 * (4-conf)
 
         # Conf 0 or 1 might have 0,0 lat,lng; use previous valid
         if (conf >= 2):
@@ -145,6 +145,7 @@ class Window(QMainWindow):
 
 
 def main():
+    # Load DB for WP
     db = Asdo('asdo_config.db')
 
     app = QApplication(sys.argv)
@@ -156,7 +157,7 @@ def main():
     provider.coordinate_changed.connect(window.add_marker)
     provider.start()
 
-    gwr_icm21 = '10.60.102.11'
+    broker = '10.60.102.11' # gwr_icm21
     broker = 'localhost'
     mqtt = My_Mqtt(broker)
     mqtt.run(provider.plot_gps)

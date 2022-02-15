@@ -1,6 +1,6 @@
 import time
 
-from my_client import My_Client
+from mqtt_client import mqtt_client
 import re
 import sys
 
@@ -11,19 +11,11 @@ gps = []
 
 def parse_line(line):
     # Line 5661644: 2021/07/01 20:40:51.635024081 10.181.40.24 AUD Navigation Navigation.cpp@357: Publishing NavigationMessage( 52.6228, 1.41293, 393, HIGH, 62.824 )
-    m = re.search('.*([\d]{2}:[\d]{2}:[\d]{2}).*$', line)
-    time_str = None
-    if m:
-        time_str = m.group(1)
-        ftr = [3600, 60, 1]
-        time_secs = sum([a * b for a, b in zip(ftr, map(int, time_str.split(':')))])
-        print(time_secs)
-
     m = re.search('^.*\((.*)\).*$', line)
     nav_msg =  None
     if m:
         nav_msg = m.group(1)
-    return (time_secs, nav_msg)
+    return nav_msg
 
 def nav_msg_to_msg(data):
     lat, lng, odo, conf, speed = data.split(',')
@@ -39,32 +31,32 @@ def parse_log_file(client, log_file):
         line = fp.readline()
         while line:
             cnt += 1
-            if "Publishing NavigationMessage" in line:
-                update = 1
-                delay = 0.2
+            if bool(re.search("10.181.40.21.*Publishing NavigationMessage", line)):
+                update = 10
+                delay = 0.1
 
                 # Always print error, every 1:update lines
                 if ("HIGH" not in line) or (not cnt % update):
                     print("{}: {}".format(cnt, line.strip()))
-                    (time_secs, nav_data) = parse_line(line)
-
-                    if time_secs:
-                        client.publish('/timestamp', '{"seconds":' + str(time_secs) + '}')
-
-                    if nav_data:
-                        g = nav_data.split(',')[:2]
+                    data = parse_line(line)
+                    if data:
+                        g = data.split(',')[:2]
                         gps.append(g)
-                        nav_msg = nav_msg_to_msg(nav_data)
-                        client.publish('/consist/out/navigation', nav_msg)
+                        nav_msg = nav_msg_to_msg(data)
+                        client.publish(nav_msg)
                         time.sleep(delay)
                 cnt += 1
             line = fp.readline()
 
 
 def main(argv):
-    main_client = My_Client()
-    main_client.connect('localhost')
-    parse_log_file(main_client, 'asdo.log')
+    client = mqtt_client()
+    try:
+        client.connect('localhost')
+    except Exception as e:
+        print("Error: " + repr(e))
+        sys.exit(1)
+    parse_log_file(client, 'asdo.log')
 
 
 if __name__ == "__main__":

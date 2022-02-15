@@ -1,88 +1,71 @@
 import threading
-import time
+from time import sleep
 
-import paho.mqtt.client as mqtt_client
+import paho.mqtt.client as mqtt
 import json
 import sys
 
+def on_connect(client, userdata, flags, rc):
+    if rc == mqtt.MQTT_ERR_SUCCESS:
+        print("Connected with result code " + str(rc))
+        client.subscribe("/consist/out/navigation")
+    else:
+        print("Bad connection Returned code=", rc)
+        client.bad_connection_flag = True
+        sys.exit(1)
+    print("## CONNECTED ##")
+
+
+def on_disconnect(client, userdata, rc):
+    print("Disconnected with result code " + str(rc))
+    if rc != mqtt.MQTT_ERR_SUCCESS:
+        print("Unexpected disconnection.")
+
+
+# The callback for when a PUBLISH message is received from the server.
+def on_message(client, userdata, msg):
+    s = (msg.payload).decode("utf-8")
+    try:
+        gps = json.loads(s)
+    except Exception as e:
+        print("Error: " + repr(e))
+
+    # print(gps)
+    try:
+        latitude = gps.get('latitude')
+        longitude = gps.get('longitude')
+        odometer = gps.get('ododmeter')
+        confidence = gps.get('confidence')
+        speed = gps.get('odospeed')
+        My_Mqtt.on_message_cbf(latitude, longitude, confidence)
+    except Exception as e:
+        print("Error: " + repr(e))
+
 
 class My_Mqtt:
-    timestamp = 0
+    on_message_cbf = None
 
     def __init__(self, broker='localhost'):
-        self.client = mqtt_client.Client()
-        self.client.on_connect = self.connect_cbf
-        self.client.on_message = self.message_cbf
+        self.client = mqtt.Client()
+        self.client.on_connect = on_connect
+        self.client.on_message = on_message
+        self.client.on_disconnect = on_disconnect
 
         # block until connected
-        connected = False
-        while not connected:
-            try:
-                self.client.connect(broker)
-                connected = True
-            except Exception as e:
-                print("Error: " + repr(e))
-                time.sleep(1)
-
-    def connect_cbf(self, client, userdata, flags, rc):
-        if rc == 0:
-            print("Connected to Broker: " + mqtt_client.connack_string(rc))
-        else:
-            print("Failed to connect, return code %d\n", rc)
+        try:
+            self.client.connect(broker, 1883)
+        except Exception as e:
+            print("Error: " + repr(e))
             sys.exit(1)
 
-        self.client.subscribe('/consist/out/navigation')
-        # self.client.subscribe('/timestamp')
-
-    # The callback for when a PUBLISH message is received from the server.
-    def message_cbf(self, client, userdata, msg):
-        print("message_cbf")
-        s = (msg.payload).decode("utf-8")
-
-        if msg.topic == '/timestamp':
-            try:
-                ts = json.loads(s)
-            except Exception as e:
-                print("Error: " + repr(e))
-
-            try:
-                seconds = ts.get('seconds')
-                print(seconds)
-                delta  = seconds - My_Mqtt.timestamp
-                print(delta)
-                My_Mqtt.timestamp = seconds
-            except Exception as e:
-                print("Error: " + repr(e))
-
-            return
-
-        try:
-            gps = json.loads(s)
-        except Exception as e:
-            print("Error: " + repr(e))
-
-        # print(gps)
-        try:
-            latitude = gps.get('latitude')
-            longitude = gps.get('longitude')
-            odometer = gps.get('ododmeter')
-            confidence = gps.get('confidence')
-            speed = gps.get('odospeed')
-            My_Mqtt.on_message_cbf(latitude, longitude, confidence)
-        except Exception as e:
-            print("Error: " + repr(e))
-
     def run(self, cbf):
-        self.connect_cbf = cbf
-        self.client.loop_forever()
-
-def test_cbf(client, userdata, msg):
-    print("test_cbf(): " + msg)
+        My_Mqtt.on_message_cbf = cbf
+        self.client.loop_start()
 
 
 def main(argv):
-    mqtt = My_Mqtt('localhost')
-    mqtt.run(test_cbf)
+    mqtt = My_Mqtt()
+    # mqtt.run()
 
 
 if __name__ == "__main__":
