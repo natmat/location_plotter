@@ -15,9 +15,9 @@ class Waypoint:
         return [(lat_min, lng_min), (lat_max, lng_max)]
 
     @classmethod
-    def get_middle(cls):
-        (a,b),(c,d) = cls.get_bounds()
-        return ((a+b)/2, (c+d)/2)
+    def get_centre(cls):
+        (lat_min,lng_min), (lat_max,lng_max) = cls.get_bounds()
+        return ((lat_min+lat_max)/2, (lng_min+lng_max)/2)
 
     @classmethod
     def print_waypoints(cls):
@@ -32,7 +32,7 @@ def main():
 
     # Waypoint.print_waypoints()
     print(Waypoint.get_bounds())
-    print(Waypoint.get_middle())
+    print(Waypoint.get_centre())
 
 if __name__ == '__main__':
     main()

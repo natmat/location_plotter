@@ -94,17 +94,17 @@ class CoordinateProvider(QObject):
 class Window(QMainWindow):
     def __init__(self):
         super().__init__()
-        waypoint_cog = Waypoint.get_middle()
-        print(waypoint_cog)
+        waypoints_centre = Waypoint.get_centre()
+        print(waypoints_centre)
         self.map = folium.Map(
             prefer_canvas=True,
-            zoom_start=10, location=waypoint_cog, control_scale=True, tiles=None
+            zoom_start=9, location=waypoints_centre, control_scale=True, tiles=None
         )
         folium.TileLayer('openstreetmap').add_to(self.map)
         folium.LayerControl().add_to(self.map)
 
         # Draw point for test
-        # folium.Marker(waypoint_cog).add_to(self.map)
+        # folium.Marker(waypoints_centre).add_to(self.map)
 
         data = io.BytesIO()
         self.map.save(data, close_file=False)
