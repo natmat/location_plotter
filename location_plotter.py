@@ -121,7 +121,7 @@ def main(argv):
 
     # client.connect("10.183.200.11", 1883)
     try:
-    client.connect("localhost", 1883)
+        client.connect("localhost", 1883)
     except Exception as e:
         print("Error: connect failed: " + repr(e))
         sys.exit(1)

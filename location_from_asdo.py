@@ -8,6 +8,8 @@ filepath = 'asdo.log'
 client = None
 gps = []
 
+NAV_MSG_SKIP = 10
+NAV_MSG_INTERVAL = 0.1
 
 def parse_line(line):
     # Line 5661644: 2021/07/01 20:40:51.635024081 10.181.40.24 AUD Navigation Navigation.cpp@357: Publishing NavigationMessage( 52.6228, 1.41293, 393, HIGH, 62.824 )
@@ -25,18 +27,19 @@ def nav_msg_to_msg(data):
     return str(nav_msg)
 
 def parse_log_file(client, log_file):
+    global NAV_MSG_SKIP
+    global NAV_MSG_INTERVAL
     global gps
+
     with open(log_file) as fp:
         cnt = 0
         line = fp.readline()
         while line:
             cnt += 1
             if bool(re.search("10.181.40.21.*Publishing NavigationMessage", line)):
-                update = 10
-                delay = 0.1
 
-                # Always print error, every 1:update lines
-                if ("HIGH" not in line) or (not cnt % update):
+                # Always print error, every 1:NAV_MSG_SKIP lines
+                if ("HIGH" not in line) or (not cnt % NAV_MSG_SKIP):
                     print("{}: {}".format(cnt, line.strip()))
                     data = parse_line(line)
                     if data:
@@ -44,7 +47,7 @@ def parse_log_file(client, log_file):
                         gps.append(g)
                         nav_msg = nav_msg_to_msg(data)
                         client.publish(nav_msg)
-                        time.sleep(delay)
+                        time.sleep(NAV_MSG_INTERVAL)
                 cnt += 1
             line = fp.readline()
 

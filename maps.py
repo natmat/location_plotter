@@ -44,6 +44,7 @@ class Asdo:
 class CoordinateProvider(QObject):
     coordinate_changed = pyqtSignal(float, float, float, str, str, bool)
     latitude = 51.5
+    n_gps = 1
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -61,7 +62,9 @@ class CoordinateProvider(QObject):
     def stop(self):
         self._timer_gps.stop()
 
+
     def plot_gps(self, lat, lng, conf):
+
         conf_color = {3:'green', 2:'yellow', 1:'red', 0:'orange'}
         radius = 100 * (4-conf)
 
@@ -73,6 +76,11 @@ class CoordinateProvider(QObject):
             lat = Asdo.latitude
             lng = Asdo.longitude
 
+        # CoordinateProvider.n_gps += 1
+        # col =  int(CoordinateProvider.n_gps/200)
+        # col = col % len(conf_color)
+        # self.coordinate_changed.emit(lat, lng, radius, conf_color[col], None, False)
+
         self.coordinate_changed.emit(lat, lng, radius, conf_color[conf], None, False)
 
     def plot_waypoint(self, wp):
@@ -82,6 +90,7 @@ class CoordinateProvider(QObject):
     def plot_waypoints(self):
         for wp in Waypoint.waypoints:
             self.plot_waypoint(wp)
+            return
 
     # def generate_coordinate(self):
     #     center_lat, center_lng = 51, -2.5
